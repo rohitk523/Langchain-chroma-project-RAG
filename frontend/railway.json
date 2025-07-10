@@ -1,0 +1,10 @@
+{
+  "deploy": {
+    "startCommand": "npm start",
+    "restartPolicyType": "ON_FAILURE",
+    "sleepApplication": false
+  },
+  "build": {
+    "buildCommand": "npm run build"
+  }
+} 
