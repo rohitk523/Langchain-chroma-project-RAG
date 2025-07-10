@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-// import { UserButton } from '@clerk/nextjs'
+import { UserButton } from '@clerk/nextjs'
 import { ChatInterface } from '@/components/chat/chat-interface'
 import { ChatSidebar } from '@/components/chat/chat-sidebar'
 import { DocumentUpload } from '@/components/chat/document-upload'
@@ -39,7 +39,7 @@ export default function DashboardPage() {
           <div className="p-4 border-b">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-xl font-semibold">RAG Chat</h1>
-              <Button variant="outline" size="sm">User</Button>
+              <UserButton />
             </div>
             
             <div className="space-y-2">

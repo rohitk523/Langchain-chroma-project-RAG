@@ -20,4 +20,4 @@ RUN apt-get update && apt-get install -y apache2-utils && \
     echo "chroma:$(openssl passwd -apr1 chromatest)" > server.htpasswd
 
 # Start ChromaDB
-CMD ["chroma", "run", "--host", "0.0.0.0", "--port", "8000", "--path", "/chroma/data"] 
+CMD ["run", "--host", "0.0.0.0", "--port", "8000", "--path", "/chroma/data"] 

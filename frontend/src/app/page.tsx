@@ -1,4 +1,4 @@
-// import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs'
+import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
@@ -11,10 +11,17 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900">RAG Chat</h1>
           <div className="flex items-center space-x-4">
-            <Link href="/dashboard">
-              <Button variant="default">Dashboard</Button>
-            </Link>
-            <Button variant="default">Sign In (Temp)</Button>
+            <SignedIn>
+              <Link href="/dashboard">
+                <Button variant="default">Dashboard</Button>
+              </Link>
+              <UserButton />
+            </SignedIn>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <Button variant="default">Sign In</Button>
+              </SignInButton>
+            </SignedOut>
           </div>
         </div>
       </header>
@@ -31,11 +38,20 @@ export default function HomePage() {
           </p>
 
           <div className="mb-12">
-            <Link href="/dashboard">
-              <Button size="lg" className="px-8 py-4 text-lg">
-                Go to Dashboard
-              </Button>
-            </Link>
+            <SignedIn>
+              <Link href="/dashboard">
+                <Button size="lg" className="px-8 py-4 text-lg">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            </SignedIn>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <Button size="lg" className="px-8 py-4 text-lg">
+                  Get Started
+                </Button>
+              </SignInButton>
+            </SignedOut>
           </div>
 
           {/* Features Grid */}

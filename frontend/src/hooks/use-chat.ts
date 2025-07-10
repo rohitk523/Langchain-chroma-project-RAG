@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-// import { useAuth } from '@clerk/nextjs'
+import { useAuth } from '@clerk/nextjs'
 import axios from 'axios'
 import { toast } from 'sonner'
 
@@ -41,20 +41,19 @@ export interface ChatResponse {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export function useChat() {
-  // const { getToken } = useAuth()
+  const { getToken } = useAuth()
   const [chats, setChats] = useState<Chat[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Mock auth function for testing
+  // Get auth headers with Clerk token
   const getAuthHeaders = useCallback(async () => {
-    // const token = await getToken()
+    const token = await getToken()
     return {
-      // Authorization: `Bearer ${token}`,
-      Authorization: `Bearer mock-token`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     }
-  }, [])
+  }, [getToken])
 
   const fetchChats = useCallback(async () => {
     try {
