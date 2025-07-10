@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     chroma_port: int = 8000
     chroma_collection_name: str = "rag_documents"
     chroma_chat_collection_name: str = "chat_history"
+    # ChromaDB Authentication
+    chroma_username: str = ""
+    chroma_password: str = ""
     
     # CORS settings
     allowed_origins: List[str] = ["http://localhost:3000", "https://*.railway.app"]

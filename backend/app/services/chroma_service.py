@@ -1,9 +1,10 @@
-import httpx
 import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import uuid
 
+import chromadb
+from chromadb.config import Settings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
@@ -12,7 +13,6 @@ from app.config import settings
 
 class ChromaService:
     def __init__(self):
-        self.chroma_base_url = f"http://{settings.chroma_host}:{settings.chroma_port}"
         self.embeddings = OpenAIEmbeddings(api_key=settings.openai_api_key)
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
@@ -21,31 +21,49 @@ class ChromaService:
             separators=["\n\n", "\n", " ", ""]
         )
         
+        # Set up ChromaDB client with authentication if credentials are provided
+        if settings.chroma_username and settings.chroma_password:
+            # Authenticated client
+            self.client = chromadb.HttpClient(
+                host=f"http://{settings.chroma_host}:{settings.chroma_port}",
+                settings=Settings(
+                    chroma_client_auth_provider="chromadb.auth.basic_authn.BasicAuthClientProvider",
+                    chroma_client_auth_credentials=f"{settings.chroma_username}:{settings.chroma_password}"
+                )
+            )
+        else:
+            # Non-authenticated client for local development
+            self.client = chromadb.HttpClient(
+                host=settings.chroma_host,
+                port=settings.chroma_port
+            )
+        
     async def initialize(self):
         """Initialize ChromaDB collections"""
         try:
-            async with httpx.AsyncClient() as client:
-                # Create documents collection
-                await client.post(
-                    f"{self.chroma_base_url}/api/v1/collections",
-                    json={
-                        "name": settings.chroma_collection_name,
-                        "metadata": {"description": "RAG documents collection"}
-                    }
+            # Create documents collection
+            try:
+                self.documents_collection = self.client.create_collection(
+                    name=settings.chroma_collection_name,
+                    metadata={"description": "RAG documents collection"}
                 )
+            except Exception:
+                # Collection already exists
+                self.documents_collection = self.client.get_collection(settings.chroma_collection_name)
                 
-                # Create chat history collection
-                await client.post(
-                    f"{self.chroma_base_url}/api/v1/collections",
-                    json={
-                        "name": settings.chroma_chat_collection_name,
-                        "metadata": {"description": "Chat history collection"}
-                    }
+            # Create chat history collection
+            try:
+                self.chat_collection = self.client.create_collection(
+                    name=settings.chroma_chat_collection_name,
+                    metadata={"description": "Chat history collection"}
                 )
+            except Exception:
+                # Collection already exists
+                self.chat_collection = self.client.get_collection(settings.chroma_chat_collection_name)
                 
             print("✅ ChromaDB collections initialized")
         except Exception as e:
-            print(f"⚠️ ChromaDB collections may already exist: {e}")
+            print(f"⚠️ ChromaDB initialization error: {e}")
     
     async def add_documents(self, documents: List[str], metadatas: List[Dict], user_id: str) -> str:
         """Add documents to ChromaDB with embeddings"""
@@ -56,21 +74,22 @@ class ChromaService:
             # Create unique IDs
             ids = [f"{user_id}_{uuid.uuid4()}" for _ in documents]
             
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.chroma_base_url}/api/v1/collections/{settings.chroma_collection_name}/add",
-                    json={
-                        "ids": ids,
-                        "embeddings": embeddings,
-                        "documents": documents,
-                        "metadatas": metadatas
-                    }
-                )
-                
-                if response.status_code == 200:
-                    return f"Added {len(documents)} documents"
-                else:
-                    raise Exception(f"Failed to add documents: {response.text}")
+            # Add user_id to all metadata
+            enhanced_metadatas = []
+            for metadata in metadatas:
+                enhanced_metadata = metadata.copy()
+                enhanced_metadata["user_id"] = user_id
+                enhanced_metadatas.append(enhanced_metadata)
+            
+            # Add to collection
+            self.documents_collection.add(
+                ids=ids,
+                embeddings=embeddings,
+                documents=documents,
+                metadatas=enhanced_metadatas
+            )
+            
+            return f"Added {len(documents)} documents"
                     
         except Exception as e:
             raise Exception(f"Error adding documents: {str(e)}")
@@ -81,32 +100,24 @@ class ChromaService:
             # Generate query embedding
             query_embedding = await self.embeddings.aembed_query(query)
             
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.chroma_base_url}/api/v1/collections/{settings.chroma_collection_name}/query",
-                    json={
-                        "query_embeddings": [query_embedding],
-                        "n_results": k,
-                        "where": {"user_id": user_id}  # Filter by user
-                    }
-                )
-                
-                if response.status_code == 200:
-                    results = response.json()
-                    
-                    # Format results
-                    documents = []
-                    if results.get("documents") and results["documents"][0]:
-                        for i, doc in enumerate(results["documents"][0]):
-                            documents.append({
-                                "content": doc,
-                                "metadata": results["metadatas"][0][i] if results.get("metadatas") else {},
-                                "distance": results["distances"][0][i] if results.get("distances") else 0
-                            })
-                    
-                    return documents
-                else:
-                    raise Exception(f"Search failed: {response.text}")
+            # Query collection
+            results = self.documents_collection.query(
+                query_embeddings=[query_embedding],
+                n_results=k,
+                where={"user_id": user_id}  # Filter by user
+            )
+            
+            # Format results
+            documents = []
+            if results.get("documents") and results["documents"][0]:
+                for i, doc in enumerate(results["documents"][0]):
+                    documents.append({
+                        "content": doc,
+                        "metadata": results["metadatas"][0][i] if results.get("metadatas") else {},
+                        "distance": results["distances"][0][i] if results.get("distances") else 0
+                    })
+            
+            return documents
                     
         except Exception as e:
             raise Exception(f"Error in similarity search: {str(e)}")
@@ -131,18 +142,15 @@ class ChromaService:
             
             message_id = f"{chat_id}_{uuid.uuid4()}"
             
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.chroma_base_url}/api/v1/collections/{settings.chroma_chat_collection_name}/add",
-                    json={
-                        "ids": [message_id],
-                        "embeddings": [embedding],
-                        "documents": [json.dumps(chat_data)],
-                        "metadatas": [chat_data]
-                    }
-                )
-                
-                return response.status_code == 200
+            # Add to chat collection
+            self.chat_collection.add(
+                ids=[message_id],
+                embeddings=[embedding],
+                documents=[json.dumps(chat_data)],
+                metadatas=[chat_data]
+            )
+            
+            return True
                 
         except Exception as e:
             print(f"Error adding chat message: {e}")
@@ -151,32 +159,23 @@ class ChromaService:
     async def get_chat_history(self, chat_id: str, user_id: str) -> List[Dict[str, Any]]:
         """Get chat history for a specific chat"""
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.chroma_base_url}/api/v1/collections/{settings.chroma_chat_collection_name}/query",
-                    json={
-                        "query_embeddings": None,
-                        "n_results": 100,
-                        "where": {
-                            "chat_id": chat_id,
-                            "user_id": user_id
-                        }
-                    }
-                )
-                
-                if response.status_code == 200:
-                    results = response.json()
-                    
-                    history = []
-                    if results.get("metadatas") and results["metadatas"][0]:
-                        for metadata in results["metadatas"][0]:
-                            history.append(metadata)
-                    
-                    # Sort by timestamp
-                    history.sort(key=lambda x: x.get("timestamp", ""))
-                    return history
-                else:
-                    return []
+            results = self.chat_collection.query(
+                query_embeddings=None,
+                n_results=100,
+                where={
+                    "chat_id": chat_id,
+                    "user_id": user_id
+                }
+            )
+            
+            history = []
+            if results.get("metadatas") and results["metadatas"][0]:
+                for metadata in results["metadatas"][0]:
+                    history.append(metadata)
+            
+            # Sort by timestamp
+            history.sort(key=lambda x: x.get("timestamp", ""))
+            return history
                     
         except Exception as e:
             print(f"Error getting chat history: {e}")
@@ -185,40 +184,31 @@ class ChromaService:
     async def get_user_chats(self, user_id: str) -> List[Dict[str, Any]]:
         """Get all chat sessions for a user"""
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.chroma_base_url}/api/v1/collections/{settings.chroma_chat_collection_name}/query",
-                    json={
-                        "query_embeddings": None,
-                        "n_results": 1000,
-                        "where": {"user_id": user_id}
-                    }
-                )
-                
-                if response.status_code == 200:
-                    results = response.json()
+            results = self.chat_collection.query(
+                query_embeddings=None,
+                n_results=1000,
+                where={"user_id": user_id}
+            )
+            
+            # Group by chat_id
+            chats = {}
+            if results.get("metadatas") and results["metadatas"][0]:
+                for metadata in results["metadatas"][0]:
+                    chat_id = metadata.get("chat_id")
+                    if chat_id not in chats:
+                        chats[chat_id] = {
+                            "chat_id": chat_id,
+                            "title": metadata.get("message", "New Chat")[:50] + "...",
+                            "created_at": metadata.get("timestamp"),
+                            "last_message_at": metadata.get("timestamp"),
+                            "message_count": 0
+                        }
                     
-                    # Group by chat_id
-                    chats = {}
-                    if results.get("metadatas") and results["metadatas"][0]:
-                        for metadata in results["metadatas"][0]:
-                            chat_id = metadata.get("chat_id")
-                            if chat_id not in chats:
-                                chats[chat_id] = {
-                                    "chat_id": chat_id,
-                                    "title": metadata.get("message", "New Chat")[:50] + "...",
-                                    "created_at": metadata.get("timestamp"),
-                                    "last_message_at": metadata.get("timestamp"),
-                                    "message_count": 0
-                                }
-                            
-                            chats[chat_id]["message_count"] += 1
-                            if metadata.get("timestamp") > chats[chat_id]["last_message_at"]:
-                                chats[chat_id]["last_message_at"] = metadata.get("timestamp")
-                    
-                    return list(chats.values())
-                else:
-                    return []
+                    chats[chat_id]["message_count"] += 1
+                    if metadata.get("timestamp") > chats[chat_id]["last_message_at"]:
+                        chats[chat_id]["last_message_at"] = metadata.get("timestamp")
+            
+            return list(chats.values())
                     
         except Exception as e:
             print(f"Error getting user chats: {e}")
