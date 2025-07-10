@@ -14,14 +14,15 @@ class Settings(BaseSettings):
     # OpenAI
     openai_api_key: str
     
-    # ChromaDB settings
-    chroma_host: str = "localhost"
-    chroma_port: int = 8000
-    chroma_collection_name: str = "rag_documents"
-    chroma_chat_collection_name: str = "chat_history"
-    # ChromaDB Authentication
-    chroma_username: str = ""
-    chroma_password: str = ""
+    # OpenSearch settings
+    opensearch_host: str = "localhost"
+    opensearch_port: int = 9200
+    opensearch_username: str = "admin"
+    opensearch_password: str = "ETHN_hnt523"
+    opensearch_use_ssl: bool = True
+    opensearch_verify_certs: bool = False
+    opensearch_documents_index: str = "rag_documents"
+    opensearch_chat_index: str = "chat_history"
     
     # CORS settings
     allowed_origins: List[str] = ["http://localhost:3000", "https://*.railway.app"]

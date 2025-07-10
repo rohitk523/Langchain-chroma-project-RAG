@@ -1,285 +1,273 @@
 # RAG Chat Application
 
-A full-stack RAG (Retrieval-Augmented Generation) chat application built with FastAPI, Next.js, ChromaDB, and Clerk authentication. Upload PDF documents and chat with them using AI.
+A full-stack RAG (Retrieval-Augmented Generation) chat application built with FastAPI, Next.js, OpenSearch, and Clerk authentication. Upload PDF documents and chat with them using AI.
 
-## 🏗️ Architecture
+## Features
 
-- **Frontend**: Next.js 14 + TypeScript + Tailwind CSS + shadcn/ui
-- **Backend**: FastAPI + Python
-- **Vector Database**: ChromaDB
-- **Authentication**: Clerk
-- **AI**: OpenAI GPT-3.5-turbo
-- **Deployment**: Railway
+- **Vector Database**: OpenSearch with k-NN search
+- **Frontend**: Next.js with TypeScript and Tailwind CSS
+- **Backend**: FastAPI with async support
+- **Authentication**: Clerk (secure user management)
+- **AI Integration**: OpenAI GPT models with LangChain
+- **Document Processing**: PDF upload and text extraction
+- **Chat Interface**: Real-time chat with document context
+- **Deployment**: Docker containers with Railway/Heroku support
 
-## 🚀 Features
+## Architecture
 
-- 📄 **PDF Document Upload**: Upload and process PDF documents
-- 💬 **AI Chat Interface**: Chat with your documents using RAG
-- 📚 **Chat History**: Persistent chat sessions with history
-- 🔐 **Authentication**: Secure user authentication with Clerk
-- 🎨 **Modern UI**: Beautiful, responsive interface with shadcn/ui
-- ☁️ **Cloud Deployment**: Ready for Railway deployment
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│                 │    │                 │    │                 │
+│   Next.js App   │───▶│   FastAPI       │───▶│   OpenSearch    │
+│   (Frontend)    │    │   (Backend)     │    │   (Vector DB)   │
+│                 │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+        │                        │                        │
+        │                        │                        │
+        ▼                        ▼                        ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│                 │    │                 │    │                 │
+│   Clerk Auth    │    │   OpenAI API    │    │   Document      │
+│   (Users)       │    │   (LLM)         │    │   Storage       │
+│                 │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 langchain-chroma-project-RAG/
-├── backend/                 # FastAPI backend
-│   ├── app/
-│   │   ├── main.py         # FastAPI application
-│   │   ├── config.py       # Configuration settings
-│   │   ├── auth.py         # Clerk authentication
-│   │   ├── models/         # Pydantic models
-│   │   └── services/       # Business logic
-│   ├── requirements.txt    # Python dependencies
-│   ├── Dockerfile         # Production container
-│   └── railway.json       # Railway config
 ├── frontend/               # Next.js frontend
 │   ├── src/
 │   │   ├── app/           # App router pages
 │   │   ├── components/    # React components
 │   │   └── hooks/         # Custom hooks
-│   ├── package.json       # Node dependencies
-│   ├── Dockerfile         # Production container
-│   └── railway.json       # Railway config
-├── chroma-service/         # ChromaDB service
-│   ├── Dockerfile         # ChromaDB container
-│   └── railway.json       # Railway config
-└── docker-compose.yml     # Local development
+│   ├── public/            # Static assets
+│   └── package.json
+├── backend/               # FastAPI backend
+│   ├── app/
+│   │   ├── services/      # Business logic
+│   │   ├── models/        # Pydantic models
+│   │   ├── auth.py        # Authentication
+│   │   └── main.py        # FastAPI app
+│   ├── uploads/           # Temporary file storage
+│   └── requirements.txt
+├── docker-compose.yml     # Development environment
+└── README.md
 ```
 
-## 🛠️ Local Development Setup
+## Quick Start
 
 ### Prerequisites
 
+- Python 3.9+
 - Node.js 18+
-- Python 3.11+
-- Docker and Docker Compose
+- Docker and Docker Compose (for development)
 - OpenAI API key
 - Clerk account
 
-### 1. Clone and Setup
+### Development Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/langchain-chroma-project-RAG.git
+   cd langchain-chroma-project-RAG
+   ```
+
+2. **Set up environment variables**
+   ```bash
+   # Backend
+   cp backend/env.dev.example backend/.env
+   
+   # Frontend
+   cp frontend/env.local.example frontend/.env.local
+   ```
+
+3. **Fill in your API keys and credentials**
+   - OpenAI API key
+   - Clerk secret and publishable keys
+   - OpenSearch credentials (use defaults for local development)
+
+4. **Start the development environment**
+   ```bash
+   # Start OpenSearch with Docker Compose
+   docker-compose up -d
+   
+   # Install and run backend
+   cd backend
+   pip install -r requirements.txt
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   
+   # Install and run frontend (in new terminal)
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+5. **Access the application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+   - OpenSearch: http://localhost:9200
+   - OpenSearch Dashboards: http://localhost:5601
+
+## Services Overview
+
+### Development Services
+- **Frontend**: http://localhost:3000
+- **Backend**: http://localhost:8000
+- **OpenSearch**: http://localhost:9200
+
+### Manual Development Setup
+
+If you prefer to run services individually:
 
 ```bash
-git clone <repository-url>
-cd langchain-chroma-project-RAG
-```
-
-### 2. Backend Setup
-
-```bash
-cd backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Copy environment template
-cp env.dev.example .env
-
-# Edit .env with your keys:
-# - CLERK_SECRET_KEY
-# - OPENAI_API_KEY
-```
-
-### 3. Frontend Setup
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Copy environment template
-cp env.local.example .env.local
-
-# Edit .env.local with your keys:
-# - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-# - CLERK_SECRET_KEY
-```
-
-### 4. Run with Docker Compose
-
-```bash
-# From project root
-docker-compose up --build
-```
-
-This starts:
-- ChromaDB: http://localhost:8001
-- Backend API: http://localhost:8000
-- Frontend: http://localhost:3000
-
-### 5. Manual Development
-
-If you prefer running services individually:
-
-```bash
-# Terminal 1: ChromaDB
-cd chroma-service
-docker build -t chroma-local .
-docker run -p 8001:8000 chroma-local
+# Terminal 1: OpenSearch
+docker-compose up opensearch-node1
 
 # Terminal 2: Backend
 cd backend
-source venv/bin/activate
-uvicorn app.main:app --reload --port 8000
+pip install -r requirements.txt
+uvicorn app.main:app --reload
 
 # Terminal 3: Frontend
 cd frontend
+npm install
 npm run dev
 ```
 
-## 🌐 Railway Deployment
+## Deployment
 
-### 1. Create Railway Projects
+### Railway Deployment
 
-Create three separate Railway projects:
-1. **RAG-Chat-Backend** (FastAPI)
-2. **RAG-Chat-Frontend** (Next.js)
-3. **RAG-Chat-ChromaDB** (ChromaDB)
+This project is configured for Railway deployment with three services:
 
-### 2. Deploy ChromaDB Service
+1. **RAG-Chat-Frontend** (Next.js)
+2. **RAG-Chat-Backend** (FastAPI)
+3. **OpenSearch-Service** (OpenSearch)
 
-```bash
-# Connect to Railway
-railway login
+### 1. Deploy OpenSearch Service
 
-# In chroma-service directory
-cd chroma-service
-railway link [your-chroma-project-id]
-railway up
-```
+OpenSearch can be deployed using Railway's database add-ons or as a separate service.
 
-### 3. Deploy Backend
+### 2. Deploy Backend
 
 ```bash
 # In backend directory
-cd backend
 railway link [your-backend-project-id]
-
-# Set environment variables in Railway dashboard:
-# - CLERK_SECRET_KEY
-# - OPENAI_API_KEY
-# - CHROMA_HOST (your chroma service URL)
-# - CHROMA_PORT=443
-
 railway up
 ```
 
-### 4. Deploy Frontend
+### 3. Deploy Frontend
 
 ```bash
 # In frontend directory
-cd frontend
 railway link [your-frontend-project-id]
-
-# Set environment variables in Railway dashboard:
-# - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-# - CLERK_SECRET_KEY
-# - NEXT_PUBLIC_API_URL (your backend service URL)
-
 railway up
 ```
 
-## 🔧 Configuration
+### 4. Environment Variables
 
-### Environment Variables
+Set these in your Railway dashboard:
 
-#### Backend (.env)
 ```bash
-# Required
-CLERK_SECRET_KEY=sk_test_...
-OPENAI_API_KEY=sk-...
+# Backend Railway Environment
+CLERK_SECRET_KEY=your_production_clerk_secret
+OPENAI_API_KEY=your_production_openai_key
+OPENSEARCH_HOST=your-opensearch-host.com
+OPENSEARCH_PORT=443
+OPENSEARCH_USERNAME=admin
+OPENSEARCH_PASSWORD=your_secure_password
 
-# ChromaDB (adjust for deployment)
-CHROMA_HOST=localhost  # or your Railway service URL
-CHROMA_PORT=8001       # or 443 for Railway
-
-# Optional
-DEBUG=true
-ALLOWED_ORIGINS=http://localhost:3000,https://your-frontend.railway.app
+# Frontend Railway Environment
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_production_clerk_publishable_key
+NEXT_PUBLIC_API_URL=https://your-backend-railway-url.railway.app
 ```
 
-#### Frontend (.env.local)
-```bash
-# Required
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
+## Configuration
 
-# API URL
-NEXT_PUBLIC_API_URL=http://localhost:8000  # or your Railway backend URL
+### Backend Configuration
+
+Key settings in `backend/app/config.py`:
+
+```python
+# OpenSearch (adjust for deployment)
+OPENSEARCH_HOST=localhost  # or your Railway service URL
+OPENSEARCH_PORT=9200       # or 443 for Railway
+OPENSEARCH_USERNAME=admin
+OPENSEARCH_PASSWORD=admin
+OPENSEARCH_USE_SSL=true
+OPENSEARCH_VERIFY_CERTS=false
 ```
 
-### Clerk Setup
+### Frontend Configuration
 
-1. Create a Clerk application at [clerk.com](https://clerk.com)
-2. Enable email authentication
-3. Copy your publishable and secret keys
-4. Add your development/production URLs to allowed origins
+Key settings in `frontend/.env.local`:
 
-## 📖 API Documentation
+```bash
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
 
-Once the backend is running, visit:
-- Development: http://localhost:8000/docs
-- Production: https://your-backend.railway.app/docs
+## API Endpoints
 
-### Key Endpoints
-
+### Chat Endpoints
 - `POST /api/chat` - Send chat message
 - `GET /api/chat/{chat_id}/history` - Get chat history
 - `GET /api/chats` - Get user's chats
-- `POST /api/upload` - Upload PDF document
 - `DELETE /api/chat/{chat_id}` - Delete chat
 
-## 🧪 Usage
+### Document Endpoints
+- `POST /api/upload` - Upload PDF document
+- `GET /api/documents` - List user's documents
 
-1. **Sign Up/Login**: Create account or login with Clerk
-2. **Upload Document**: Click "Upload Document" and select a PDF
-3. **Start Chatting**: Ask questions about your uploaded documents
-4. **View Sources**: See source citations with similarity scores
-5. **Manage Chats**: View chat history, create new chats, delete old ones
+### Health Check
+- `GET /` - API health check
+- `GET /health` - Detailed health status
 
-## 🔍 Troubleshooting
+## Technology Stack
+
+- **Frontend**: Next.js, TypeScript, Tailwind CSS, Clerk
+- **Backend**: FastAPI, Python, Pydantic, LangChain
+- **Vector Database**: OpenSearch with k-NN plugin
+- **AI/ML**: OpenAI GPT, LangChain
+- **Authentication**: Clerk
+- **Deployment**: Railway, Docker
+- **Development**: Docker Compose
+
+## Troubleshooting
 
 ### Common Issues
 
-1. **CORS Errors**: Check `ALLOWED_ORIGINS` in backend config
-2. **Auth Errors**: Verify Clerk keys and webhook URLs
-3. **ChromaDB Connection**: Ensure ChromaDB service is running and accessible
-4. **File Upload Fails**: Check file size limits and PDF format
+1. **OpenSearch Connection**: Ensure OpenSearch service is running and accessible
+2. **Authentication**: Check Clerk keys and configuration
+3. **API Keys**: Verify OpenAI API key is valid and has credits
+4. **CORS**: Check allowed origins in backend settings
 
-### Logs
+### Debug Commands
 
 ```bash
-# Backend logs
+# Check OpenSearch health
+curl -X GET "localhost:9200/_cluster/health?pretty"
+
+# Check backend logs
 docker-compose logs backend
 
-# Frontend logs  
-docker-compose logs frontend
-
-# ChromaDB logs
-docker-compose logs chroma
+# Check OpenSearch logs
+docker-compose logs opensearch-node1
 ```
 
-## 📄 License
+## License
 
-MIT License - see LICENSE file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+4. Submit a pull request
 
-## 🆘 Support
+## Support
 
-For issues and questions:
-1. Check the troubleshooting section
-2. Review Railway deployment logs
-3. Open an issue on GitHub
+For issues and questions, please open an issue in the GitHub repository.

@@ -9,13 +9,13 @@ from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
 
-from app.services.chroma_service import ChromaService
+from app.services.opensearch_service import OpenSearchService
 from app.models.chat import ChatResponse, ChatHistory
 from app.config import settings
 
 class ChatService:
-    def __init__(self, chroma_service: ChromaService):
-        self.chroma_service = chroma_service
+    def __init__(self, opensearch_service: OpenSearchService):
+        self.opensearch_service = opensearch_service
         self.llm = ChatOpenAI(
             model_name="gpt-3.5-turbo",
             temperature=0.3,
@@ -45,8 +45,8 @@ class ChatService:
             if not chat_id:
                 chat_id = str(uuid.uuid4())
             
-            # Get relevant documents from ChromaDB
-            relevant_docs = await self.chroma_service.similarity_search(
+            # Get relevant documents from OpenSearch
+            relevant_docs = await self.opensearch_service.similarity_search(
                 query=message,
                 user_id=user_id,
                 k=3
@@ -77,7 +77,7 @@ class ChatService:
             response_text = response.content if hasattr(response, 'content') else str(response)
             
             # Save chat message to history
-            await self.chroma_service.add_chat_message(
+            await self.opensearch_service.add_chat_message(
                 chat_id=chat_id,
                 user_id=user_id,
                 message=message,
@@ -107,7 +107,7 @@ class ChatService:
     async def get_chat_history(self, chat_id: str, user_id: str) -> List[ChatHistory]:
         """Get chat history for a specific chat"""
         try:
-            history_data = await self.chroma_service.get_chat_history(chat_id, user_id)
+            history_data = await self.opensearch_service.get_chat_history(chat_id, user_id)
             
             history = []
             for item in history_data:
@@ -132,7 +132,7 @@ class ChatService:
     async def get_user_chats(self, user_id: str) -> List[Dict[str, Any]]:
         """Get all chat sessions for a user"""
         try:
-            return await self.chroma_service.get_user_chats(user_id)
+            return await self.opensearch_service.get_user_chats(user_id)
         except Exception as e:
             print(f"Error getting user chats: {e}")
             return []
@@ -140,7 +140,7 @@ class ChatService:
     async def delete_chat(self, chat_id: str, user_id: str) -> bool:
         """Delete a chat session"""
         try:
-            return await self.chroma_service.delete_chat(chat_id, user_id)
+            return await self.opensearch_service.delete_chat(chat_id, user_id)
         except Exception as e:
             print(f"Error deleting chat: {e}")
             return False
@@ -159,7 +159,7 @@ class ChatService:
                 await f.write(content)
             
             # Process the PDF
-            result = await self.chroma_service.process_pdf_file(file_path, user_id)
+            result = await self.opensearch_service.process_pdf_file(file_path, user_id)
             
             # Clean up uploaded file
             os.remove(file_path)
@@ -176,7 +176,7 @@ class ChatService:
     async def search_documents(self, query: str, user_id: str, k: int = 5) -> List[Dict[str, Any]]:
         """Search user's documents"""
         try:
-            return await self.chroma_service.similarity_search(query, user_id, k)
+            return await self.opensearch_service.similarity_search(query, user_id, k)
         except Exception as e:
             print(f"Error searching documents: {e}")
             return [] 

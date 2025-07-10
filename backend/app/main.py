@@ -3,17 +3,38 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import List, Optional
+from contextlib import asynccontextmanager
 import os
 from datetime import datetime
 import uuid
 
 from app.config import settings
 from app.auth import verify_clerk_token
-from app.services.chroma_service import ChromaService
+from app.services.opensearch_service import OpenSearchService
 from app.services.chat_service import ChatService
 from app.models.chat import ChatRequest, ChatResponse, ChatHistory
 
-app = FastAPI(title="RAG Chat API", version="1.0.0")
+# Global service instances
+opensearch_service = OpenSearchService()
+chat_service = ChatService(opensearch_service)
+
+# Application lifespan
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    print("🚀 Starting up...")
+    await opensearch_service.initialize()
+    yield
+    # Shutdown
+    print("🔥 Shutting down...")
+
+# Create FastAPI app
+app = FastAPI(
+    title=settings.app_name,
+    description="A RAG-powered chat application with OpenSearch",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 # CORS middleware
 app.add_middleware(
@@ -26,16 +47,6 @@ app.add_middleware(
 
 # Security
 security = HTTPBearer()
-
-# Initialize services
-chroma_service = ChromaService()
-chat_service = ChatService(chroma_service)
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize services on startup"""
-    await chroma_service.initialize()
-    print("✅ Services initialized successfully")
 
 @app.get("/")
 async def root():

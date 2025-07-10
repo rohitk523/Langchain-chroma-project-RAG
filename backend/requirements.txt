@@ -1,32 +1,26 @@
-fastapi==0.115.6
-uvicorn==0.35.0
-python-multipart==0.0.20
-python-dotenv==1.1.1
-pydantic==2.11.7
-pydantic-settings==2.10.1
+fastapi==0.104.1
+uvicorn==0.24.0
+python-multipart==0.0.6
+aiofiles==23.2.1
 
-# Clerk Authentication
-clerk-sdk-python==1.1.0
 
-# LangChain and AI
-langchain==0.3.26
-langchain-core==0.3.68
-langchain-text-splitters==0.3.8
-langchain-community==0.3.27
-langchain-openai==0.3.6
-openai==1.94.0
-
-# ChromaDB Client
-chromadb==1.0.15
-httpx==0.28.1
-
-# PDF Processing
-pypdf==5.7.0
-
-# CORS and HTTP
 python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-bcrypt==4.3.0
 
-# Utilities
-aiofiles==24.1.0 
+# LangChain
+langchain==0.2.16
+langchain-community==0.2.16
+langchain-openai==0.1.23
+
+# PDF processing
+pypdf==3.17.4
+
+# OpenSearch Client
+opensearch-py==2.4.2
+
+# Environment management
+python-dotenv==1.0.0
+pydantic-settings==2.0.3
+
+# Additional dependencies
+requests==2.31.0
+httpx==0.25.2 

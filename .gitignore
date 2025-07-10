@@ -144,8 +144,8 @@ temp/
 uploads/
 *.pdf
 
-# ChromaDB data
-chroma_data/
+# OpenSearch data
+opensearch_data/
 *.db
 *.sqlite*
 
