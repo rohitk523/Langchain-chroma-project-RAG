@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useAuth } from '@clerk/nextjs'
+import { useState, useEffect, useCallback } from 'react'
+// import { useAuth } from '@clerk/nextjs'
 import axios from 'axios'
 import { toast } from 'sonner'
 
@@ -41,20 +41,22 @@ export interface ChatResponse {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export function useChat() {
-  const { getToken } = useAuth()
+  // const { getToken } = useAuth()
   const [chats, setChats] = useState<Chat[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const getAuthHeaders = async () => {
-    const token = await getToken()
+  // Mock auth function for testing
+  const getAuthHeaders = useCallback(async () => {
+    // const token = await getToken()
     return {
-      Authorization: `Bearer ${token}`,
+      // Authorization: `Bearer ${token}`,
+      Authorization: `Bearer mock-token`,
       'Content-Type': 'application/json',
     }
-  }
+  }, [])
 
-  const fetchChats = async () => {
+  const fetchChats = useCallback(async () => {
     try {
       setLoading(true)
       const headers = await getAuthHeaders()
@@ -68,9 +70,9 @@ export function useChat() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [getAuthHeaders])
 
-  const sendMessage = async (
+  const sendMessage = useCallback(async (
     message: string,
     chatId?: string | null
   ): Promise<ChatResponse | null> => {
@@ -95,9 +97,9 @@ export function useChat() {
       toast.error('Failed to send message')
       return null
     }
-  }
+  }, [getAuthHeaders, fetchChats])
 
-  const getChatHistory = async (chatId: string): Promise<ChatMessage[]> => {
+  const getChatHistory = useCallback(async (chatId: string): Promise<ChatMessage[]> => {
     try {
       const headers = await getAuthHeaders()
       const response = await axios.get(
@@ -110,9 +112,9 @@ export function useChat() {
       toast.error('Failed to load chat history')
       return []
     }
-  }
+  }, [getAuthHeaders])
 
-  const deleteChat = async (chatId: string): Promise<boolean> => {
+  const deleteChat = useCallback(async (chatId: string): Promise<boolean> => {
     try {
       const headers = await getAuthHeaders()
       await axios.delete(`${API_URL}/api/chat/${chatId}`, { headers })
@@ -126,9 +128,9 @@ export function useChat() {
       toast.error('Failed to delete chat')
       return false
     }
-  }
+  }, [getAuthHeaders])
 
-  const uploadDocument = async (file: File): Promise<boolean> => {
+  const uploadDocument = useCallback(async (file: File): Promise<boolean> => {
     try {
       const headers = await getAuthHeaders()
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -150,15 +152,15 @@ export function useChat() {
       toast.error('Failed to upload document')
       return false
     }
-  }
+  }, [getAuthHeaders])
 
-  const refetchChats = () => {
+  const refetchChats = useCallback(() => {
     fetchChats()
-  }
+  }, [fetchChats])
 
   useEffect(() => {
     fetchChats()
-  }, [])
+  }, [fetchChats])
 
   return {
     chats,
