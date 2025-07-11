@@ -370,4 +370,86 @@ class OpenSearchService:
             return result
             
         except Exception as e:
-            raise Exception(f"Error processing PDF: {str(e)}") 
+            raise Exception(f"Error processing PDF: {str(e)}")
+    
+    async def health_check(self) -> Dict[str, Any]:
+        """Check OpenSearch cluster health"""
+        try:
+            # Check cluster health
+            health_response = self.client.cluster.health()
+            
+            # Check if indices exist
+            indices_exist = {
+                "documents_index": self.client.indices.exists(index=self.documents_index),
+                "chat_index": self.client.indices.exists(index=self.chat_index)
+            }
+            
+            # Get index stats
+            try:
+                documents_stats = self.client.indices.stats(index=self.documents_index)
+                chat_stats = self.client.indices.stats(index=self.chat_index)
+                
+                return {
+                    "status": "healthy",
+                    "cluster_status": health_response.get("status", "unknown"),
+                    "indices": {
+                        "documents": {
+                            "exists": indices_exist["documents_index"],
+                            "document_count": documents_stats["_all"]["primaries"]["docs"]["count"] if indices_exist["documents_index"] else 0
+                        },
+                        "chat": {
+                            "exists": indices_exist["chat_index"],
+                            "message_count": chat_stats["_all"]["primaries"]["docs"]["count"] if indices_exist["chat_index"] else 0
+                        }
+                    },
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            except Exception as stats_error:
+                return {
+                    "status": "partial",
+                    "cluster_status": health_response.get("status", "unknown"),
+                    "indices": indices_exist,
+                    "error": f"Could not get index stats: {str(stats_error)}",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "error": str(e),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+    
+    async def get_user_documents(self, user_id: str) -> List[Dict[str, Any]]:
+        """Get all documents for a specific user"""
+        try:
+            search_body = {
+                "query": {
+                    "term": {"user_id": user_id}
+                },
+                "sort": [{"timestamp": {"order": "desc"}}],
+                "size": 1000,
+                "_source": ["content", "metadata", "timestamp"]
+            }
+            
+            response = self.client.search(
+                index=self.documents_index,
+                body=search_body
+            )
+            
+            documents = []
+            for hit in response["hits"]["hits"]:
+                source = hit["_source"]
+                documents.append({
+                    "id": hit["_id"],
+                    "content": source["content"][:500] + "..." if len(source["content"]) > 500 else source["content"],
+                    "metadata": source["metadata"],
+                    "timestamp": source["timestamp"],
+                    "full_content_available": len(source["content"]) > 500
+                })
+            
+            return documents
+                    
+        except Exception as e:
+            print(f"Error getting user documents: {e}")
+            return [] 
